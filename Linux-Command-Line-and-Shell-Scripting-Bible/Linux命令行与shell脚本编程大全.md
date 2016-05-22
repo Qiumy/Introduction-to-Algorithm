@@ -358,3 +358,167 @@ done > ouput.txt
 done | sort
 ```
 
+# 第13章 处理用户输入
+
+## 命令行参数
+
+\$0是程序名，\$1是第一个参数，\$2是第二个参数，以此类推，直到第9个参数\$9。可以使用test命令里使用了-n参数来检查命令行参数是否有数据。
+
+## 特殊参数变量
+
+\$#特殊变量含有脚本运行时就有的命令行参数的个数。
+
+变量${!#}代表了最后一个命令行参数变量。
+
+### 抓取所有的数据
+
+\$*和\$@变量提供了对所有参数的快速访问。这两个都能够在单个变量中存储所有的命令行参数。
+
+\$*变量会把命令行上提供的所有参数当做单个单词保存。
+
+\$@变量会将命令行上提供的所有参数当做同一个字符串中的多个独立的单词。它允许你遍历所有的值，将提供的每个参数分割开来。
+
+```shell
+count=1
+for param in "$*"
+do 
+	echo "\$* Parameter #$count = $param"
+done
+
+count=1
+for param in "$@"
+do
+	echo "\$@ Parameter #$count = $param"
+done
+```
+
+## 移动变量
+
+shift会根据它们的相对位置来移动命令行参数。
+
+## 处理选项
+
+### 查找选项
+
+- 处理简单选项
+
+```shell
+#!bin/bash
+# extracting command line options as parameters
+
+while [ -n "$1" ]
+do
+	case "$1" in
+		-a) echo "found the -a option";;
+		-b) echo "found the -b option";;
+		*) echo "$1 is not an option";;
+	esac
+	shift
+done
+```
+
+- 分离参数和选项
+
+```shell
+#!bin/bash
+# extracting command line options as parameters
+
+while [ -n "$1" ]
+do
+	case "$1" in
+		-a) echo "found the -a option";;
+		-b) echo "found the -b option";;
+		--) shift
+			break;;
+		*) echo "$1 is not an option";;
+	esac
+	shift
+done	
+```
+
+- 处理带值的选项
+
+```shell
+#!/bin/bash
+# extracting command line options and values
+
+while [ -n "$1" ]
+do
+	case "$1" in
+		-a) echo "found the -a options";;
+		-b) param="$2"
+			echo "found the -b option with parameter value $param"
+			shift;;
+		-c) echo "found the -c option";;
+		--) shift
+			break;;
+		*) echo "$1 is not an option";;
+	esac
+	shift
+done
+```
+
+### 使用getopt命令
+
+```shell
+#getopt optstring options parameters
+$getopt ab:cd -a -b test1 -cd test2 test3
+# -a -b test1 -c -d -- test2 test3
+```
+
+```shell
+#!/bin/bash
+# extracting command line options and values with getopt
+
+set -- `getopt -q ab:c "$@"`
+
+while [ -n "$1" ]
+do
+	case "$1" in
+		-a) echo "found the -a options";;
+		-b) param="$2"
+			echo "found the -b option with parameter value $param"
+			shift;;
+		-c) echo "found the -c option";;
+		--) shift
+			break;;
+		*) echo "$1 is not an option";;
+	esac
+	shift
+done
+
+count=1
+for param in "$@"
+do
+	echo "Parameter #$count: $param"
+	count=$[ $count + 1 ]
+done
+```
+
+### 使用更高级的getopts
+
+```shell
+getopts optstring variable
+```
+
+getopts命令会使用到两个环境变量。如果选项需要跟一个参数值，OPTARG环境变量会保存这个值。OPTIND环境变量保存了参数列表中getopts正在处理的参数位置。
+
+## 将选项标准化
+
+例如在使用read命令的时候，使用-p选项允许世界在read命令行指定提示符；使用-t选项指定read命令等待输入的秒数；使用-s选项组织奖传给read命令的数据显示在显示器上。
+
+显示例子说明将文件中的数据传给read命令。将文件运行cat命令后的输入通过管道直接传给含有read命令的while命令。
+
+```shell
+#!/bin/bash
+# reading data from a file
+
+count=1
+cat test | while read line
+do
+	echo "Line $count: $line"
+	count=$[ $count + 1 ]
+done
+echo "fininshed processing the file"
+```
+
