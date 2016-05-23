@@ -522,3 +522,196 @@ done
 echo "fininshed processing the file"
 ```
 
+# 第14章 呈现数据
+
+## 理解输入和输出
+
+### 标准文件描述符
+
+| 文件描述符 |   缩写   |  描述  |
+| :---: | :----: | :--: |
+|   0   | STDIN  | 标准输入 |
+|   1   | STOUT  | 标准输出 |
+|   2   | STDERR | 标准错误 |
+
+### STDIN
+
+对于终端界面来说，标准输入是键盘；在使用输入重定向符号时，Linux会用重定向指定文件来替换标准输入文件描述符。
+
+### STDOUT
+
+在终端界面，标准输出就是终端显示器；通过重定向符号，通常会显示到显示器的所有输出会被shell重定向到指定的重定向文件。
+
+### STDERR
+
+默认情况下，STDERR文件描述符会和STDOUT文件描述符指向相同的地方，即默认情况下，错误信息也会输出到显示器输出中。
+
+## 重定向错误
+
+### 只重定向错误
+
+```shell
+{ chapter14 }  >> ls -al badfile 2> test                              
+{ chapter14 }  >> cat test                                           
+ls: cannot access badfile: No such file or directory
+```
+
+### 重定向错误和数据
+
+```shell
+{ chapter14 }  >> ls -al test badtest 2> test1 1> test2              
+{ chapter14 }  >> cat test1                                          
+ls: cannot access badtest: No such file or directory
+{ chapter14 }  >> cat test2                                            
+-rw-rwxr--+ 1 minyi None 53 May 23 10:23 test
+```
+
+可以使用特殊的重定向符号`&>`将STDERR和STDOUT的输出重定向到同一个输出文件。
+
+## 在脚本中重定向输出和输入
+
+### 临时重定向
+
+如果故意在脚本中生成错误信息，可以将单独的一行输出重定向到STDERR。在重定向到文件描述符时，你必须在文件描述符数字之前加一个and符（&）。
+
+```shell
+#!/bin/bash
+#testing STDERR messages
+
+echo "this is error" >&2
+echo "this is normal output"
+```
+
+运行脚本时重定向STDERR
+
+```shell
+{ chapter14 }  >> bash stderr01.sh 2>test                              
+this is normal output
+{ chapter14 }  >> cat test                                             
+this is error
+```
+
+### 永久重定向
+
+```shell
+#!/bin/bash
+#redirecting output to different locations
+
+exec 2>testerror
+
+echo "this is th e start of the script"
+echo "now redirecting all output to another location"
+
+exec 1>testout
+
+echo "this output should go to the testout file"
+echo "but this should go to the testerror file" >&2
+```
+
+运行脚本
+
+```shell
+{ chapter14 }  >> bash stderr_stdin.sh                               
+this is th e start of the script
+now redirecting all output to another location
+{ chapter14 }  >> cat testout                                          
+this output should go to the testout file
+{ chapter14 }  >> cat testerror                                        
+but this should go to the testerror file
+```
+
+### 重定向输入
+
+```shell
+#!/bin/bash
+# redirecting file input
+
+exec 0<testfile
+count=1
+
+while read line
+do
+	echo "Line #$count : $line"
+	count=$[ $count+1 ]
+done
+```
+
+## 创建自己的重定向
+
+- 创建输出文件描述符
+
+```shell
+#!/bin/bash
+# using an alternative file descript
+
+exec 3>testout3
+
+echo "this should display on the monitor"
+echo "this should be store in the file" >&3
+echo "this should be back on the monitor"
+```
+
+- 重定向文件描述符
+
+```shell
+#storing STDPPUT. then coming back to it
+
+exec 3>&1
+exec 1>test4out
+
+echo "this should store in output file"
+echo "along with this line"
+
+exec 1>&3
+
+echo "be back to normal"
+```
+
+- 关闭文件描述符
+
+要关闭文件描述符，将它重定向到特殊符号&-。
+
+```shell
+exec 3>&-
+```
+
+## 阻止命令输入
+
+Linux系统上null文件的标准位置是/dev/null。重定向到盖文治的任何数据都会被丢掉。
+
+此外，还可以在输入重定向中将/dev/null作为输入文件，以达到快速移除现有文件中的数据而不用先删除文件再创建。
+
+```shell
+/dev/null/ > testfile
+```
+
+## 创建临时文件
+
+### 创建本地临时文件
+
+```shell
+mktemp testing.XXX
+```
+
+### 在/tmp目录创建临时文件
+
+```shell
+mktemp -t test.XXXX
+```
+
+### 创建临时目录
+
+```shell
+mktemp -d dir.XXXXX
+```
+
+## 记录消息
+
+有时将输出一边发送到显示器一边发送到日志文件，可以使用特殊的tee命令。
+
+tee命令相当于管道的一个T型接头，它将从STDIN过来的数据同时发给两个目的地。一个目的地是STDOUT，另一个目的地是tee命令行所指定的文件名。
+
+```shell
+tee filename
+```
+
