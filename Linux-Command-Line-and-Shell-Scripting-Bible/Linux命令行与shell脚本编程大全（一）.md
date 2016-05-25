@@ -715,3 +715,184 @@ tee命令相当于管道的一个T型接头，它将从STDIN过来的数据同�
 tee filename
 ```
 
+# 第15章 控制脚本
+
+## 处理信号
+
+常见的Linux系统信号
+
+|  信号  |    值    |       描述        |
+| :--: | :-----: | :-------------: |
+|  1   | SIGHUP  |      挂起进程       |
+|  2   | SIGINT  |      终止进程       |
+|  3   | SIGQUIT |      停止进程       |
+|  9   | SIGKILL |     无条件终止进程     |
+|  15  | SIGTERM |    可能的话终止进程     |
+|  17  | SIGSTOP | 无条件停止进程，但不是终止进程 |
+|  18  | SIGTSTP | 停止或暂停进程，但不终止进程  |
+|  19  | SIGCONT |    继续运行停止的进程    |
+
+- Ctrl+C组合间会生成SIGINT信号，并将其发送给shell中当前运行的所有进程。
+- Ctrl+Z组合键会生成SIGTSTP信号，停止shell中运行的任何进程。
+- 停止进程和终止进程不同，停止进程会让程序继续保留在内存中，并能从上次停止的位置继续运行。
+
+可以使用ps命令来查看已停止的作业。在STAT一列中，ps命令显示已停止作业的状态为T。可以使用kill命令来发送一个SIGKILL信号来终止它。
+
+```shell
+kill -9 [PID]
+```
+
+### 捕捉信号
+
+可以使用trap命令来指定shell脚本要观察那些Linux信号，并从shell中拦截。
+
+```shell
+trap commands signals
+```
+
+```shell
+#!/bin/bash
+#testing signal trapping
+
+trap "echo 'sorry, i have trapped ctrl-c'" SIGINT SIGTERM
+echo "this is a test program"
+count=1
+while [ $count -le 10 ]
+do
+	echo "Loop #$count"
+	sleep 5
+	count=$[ $count+1 ]
+done
+echo "this is the end of the test program"
+```
+
+### 捕捉脚本的退出
+
+```shell
+trap "echo byebye" EXIT
+```
+
+### 移除捕捉
+
+可以用单破折线作为命令，后跟要移除的信号来移除一组信号捕捉，将其恢复到正常状态。一旦信号捕捉被移除了，脚本会忽略该信号。但是，如果在捕捉被移除前收到信号，脚本就会在trap命令中处理它。
+
+```shell
+#!/bin/bash
+# removing a set trap
+
+trap "echo byebye" EXIT
+
+count=1
+while [ $count -le 5 ]
+do
+	echo "loop #$count"
+	sleep 2
+	count=$[ $count + 1 ]
+done
+trap - EXIT
+echo "i just removed the trap"
+```
+
+(尝试在脚本运行过程中，按Ctrl+C)
+
+## 以后台模式运行脚本
+
+- 在命令行界面以后台模式运行shell脚本，只要在命令后面加个&符就行了。
+
+
+- 在终端会话中使用后台进程时，如果后台进程绑定到了该终端回话的终端上了，进程会话退出时，后台进程也会退出。
+
+## 非控制台下运行脚本
+
+`nohup`命令可以实现：在终端回话中启动脚本，然后让脚本一直以后台模式运行，直到其完成（计时退出了终端会话）。
+
+## 作业控制
+
+- 可以使用`jobs`命令查看作业
+
+  带加号的作业会被当做默认的作业。在使用作业控制命令时，如果未在命令行指定任何作业号，该作业会被当成操作对象。带减号的作业会在当前默认作业完成处理时成为下一个默认作业。
+
+- `bg`命令加上作业号可以以后台模式重启一个作业。
+
+- `fg`命令加上作业号可以以前台模式重启作业。
+
+## 调整谦让度
+
+- `nice`命令可以允许在启东市调整一个命令的调度优先级。
+
+```shell
+nice -n 10 ./test4 > testout &
+```
+
+- `renice`命令改变系统上已允许命令的优先级。
+
+## 定时运行作业
+
+### 使用at命令来计划执行作业
+
+- at命令基本格式
+
+```shell
+at [-f filename] time
+```
+
+- `atq`命令可以查看系统中有哪些作业在等待
+
+
+- `atrm`命令来删除等待中的作业（`atrm [作业号]`）
+
+### 计划定期执行脚本
+
+- corn时间表——指定作业何时运行
+
+  ```shell
+  min hour dayofmonth month dayofweek command
+
+  #e.g.
+  # run at 12:00 on the first day in each month
+  00 12 1 * * command
+  ```
+
+- 列出已有的cron时间表
+
+  ```shell
+  crontab -l
+  ```
+
+- corn目录
+
+  当创建的脚本不需要有精确的执行时间是，用预配置的cron脚本目录会更加方便。有4个基本的目录：hourly、daily、monthly、weekly。
+
+  ```shell
+  $ ls /etc/cron.*ly
+  /etc/cron.daily:
+  0anacron  apport  apt  bsdmainutils  cracklib-runtime  dpkg  logrotate  man-db  mlocate  passwd  popularity-contest  update-notifier-common  upstart
+  /etc/cron.hourly:
+
+  /etc/cron.monthly:
+  0anacron
+  /etc/cron.weekly:
+  0anacron  apt-xapian-index  fstrim  man-db  update-notifier-common
+  ```
+
+  如果有脚本需要每天运行一次，只要将脚本复制到daily目录，cron就会每天执行它。
+
+- anacron程序：
+
+  > anacron 并不能指定何时执行某项任务， 而是以天为单位或者是在开机后立刻进行 anacron 的动作，他会去侦测停机期间应该进行但是并没有进行的 cron服务，如果有就将该任务执行一遍，然后就自动停止。
+
+## 启动时运行
+
+- 开机时运行脚本
+
+  可以修改本地开机文件（不同的发行版，开机文件的位置不同），使用脚本时，必须指定脚本的全路径。
+
+- 在新shell中启动
+
+  bash shell会用主目录下的两个文件.bash_profile和.bashrc来自动启动脚本并设置环境变量。
+
+  当新shell是新的登录生成的话，bash shell会运行.bash_profile文件。可以把任何登录时要运行的脚本放到该文件中。
+
+  当新shell启动时，包括有新的登录的情况，bash shell 会运行.bashrc文件。
+
+  如果想为系统中所有用户运行一个脚本。大多数Linux发行版提供了/etc/bashrc文件。
