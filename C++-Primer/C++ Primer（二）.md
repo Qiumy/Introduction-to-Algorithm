@@ -68,3 +68,29 @@ while (begin != end){
 ```
 
 - 容器适配器：stack、queue、priority_queue。
+
+## 第10章 泛型算法
+
+## 第11章 关联容器
+
+- 关联容器类型
+
+| 按关键字有序保存 |                  |
+| -------- | ---------------- |
+| map      | 关联数组，保存关键字——值    |
+| set      | 关键字即值，即只保存关键字的容器 |
+| multimap | 关键字可重复出现的map     |
+| multiset | 关键字可重复出现的set     |
+
+| 无序集合             |                    |
+| ---------------- | ------------------ |
+| unorder_map      | 用哈希函数组织的map        |
+| unorder_set      | 用哈希函数组织的set        |
+| unorder_multimap | 哈希组织的map：关键字可以重复出现 |
+| unorder_multiset | 哈希组织的set：关键字可以重复出现 |
+
+- set的迭代器是const的。虽然set类型同时定义了iterator和const_iteratr类型，但两种类型都只允许只读访问set中的元素。
+- 由于县标运算符可以插入一个新元素，所以只可以对非const的map使用下标操作。
+
+## 第12章 动态内存
+
